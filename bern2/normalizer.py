@@ -14,7 +14,7 @@ time_format = '[%d/%b/%Y %H:%M:%S.%f]'
 
 
 class Normalizer:
-    def __init__(self, use_neural_normalizer, gene_port=18888, disease_port=18892, no_cuda=False):
+    def __init__(self, use_neural_normalizer, gene_host='127.0.0.1', gene_port=18888, disease_host='127.0.0.1', disease_port=18892, no_cuda=False):
         # Normalizer paths
         self.BASE_DIR = 'resources/normalization/'
         self.NORM_INPUT_DIR = {
@@ -27,34 +27,36 @@ class Normalizer:
         }
         self.NORM_DICT_PATH = {
             'drug': os.path.join(self.BASE_DIR,
-                                'dictionary/dict_ChemicalCompound_20210630.txt'),
+                                 'dictionary/dict_ChemicalCompound_20210630.txt'),
             'gene': 'setup.txt',
             'species': os.path.join(self.BASE_DIR,
                                     'dictionary/dict_Species.txt'),
             'cell_line': os.path.join(self.BASE_DIR,
-                                    'dictionary/dict_CellLine_20210520.txt'),
+                                      'dictionary/dict_CellLine_20210520.txt'),
             'cell_type': os.path.join(self.BASE_DIR,
-                                    'dictionary/dict_CellType_20210810.txt'),
+                                      'dictionary/dict_CellType_20210810.txt'),
         }
 
         # checkpoint on huggingface hub
         self.NEURAL_NORM_MODEL_PATH = {
-            'disease':'dmis-lab/biosyn-sapbert-bc5cdr-disease',
-            'drug':'dmis-lab/biosyn-sapbert-bc5cdr-chemical',
-            'gene':'dmis-lab/biosyn-sapbert-bc2gn',
+            'disease': 'dmis-lab/biosyn-sapbert-bc5cdr-disease',
+            'drug': 'dmis-lab/biosyn-sapbert-bc5cdr-chemical',
+            'gene': 'dmis-lab/biosyn-sapbert-bc2gn',
         }
         self.NEURAL_NORM_CACHE_PATH = {
-            'disease':os.path.join(self.BASE_DIR,
-                    'normalizers/neural_norm_caches/dict_Disease_20210630.txt.pk'),
-            'drug':os.path.join(self.BASE_DIR,
-                    'normalizers/neural_norm_caches/dict_ChemicalCompound_20210630.txt.pk'),
-            'gene':os.path.join(self.BASE_DIR,
-                    'normalizers/neural_norm_caches/dict_Gene.txt.pk'),
+            'disease': os.path.join(self.BASE_DIR,
+                                    'normalizers/neural_norm_caches/dict_Disease_20210630.txt.pk'),
+            'drug': os.path.join(self.BASE_DIR,
+                                 'normalizers/neural_norm_caches/dict_ChemicalCompound_20210630.txt.pk'),
+            'gene': os.path.join(self.BASE_DIR,
+                                 'normalizers/neural_norm_caches/dict_Gene.txt.pk'),
         }
-        
+
         self.NORM_MODEL_VERSION = 'dmis ne norm v.20220226'
 
-        self.HOST = '127.0.0.1'
+        # normalizer port
+        self.GENE_HOST = gene_host
+        self.DISEASE_HOST = disease_host
 
         # normalizer port
         self.GENE_PORT = gene_port
@@ -62,11 +64,15 @@ class Normalizer:
 
         self.NO_ENTITY_ID = 'CUI-less'
 
-        self.chemical_normalizer = ChemicalNormalizer(self.NORM_DICT_PATH['drug'])
-        self.species_normalizer = SpeciesNormalizer(self.NORM_DICT_PATH['species'])
-        self.cellline_normalizer = CellLineNormalizer(self.NORM_DICT_PATH['cell_line'])
-        self.celltype_normalizer = CellTypeNormalizer(self.NORM_DICT_PATH['cell_type'])
-        
+        self.chemical_normalizer = ChemicalNormalizer(
+            self.NORM_DICT_PATH['drug'])
+        self.species_normalizer = SpeciesNormalizer(
+            self.NORM_DICT_PATH['species'])
+        self.cellline_normalizer = CellLineNormalizer(
+            self.NORM_DICT_PATH['cell_line'])
+        self.celltype_normalizer = CellTypeNormalizer(
+            self.NORM_DICT_PATH['cell_type'])
+
         # neural normalizer
         self.neural_disease_normalizer = None
         self.neural_chemical_normalizer = None
@@ -80,22 +86,24 @@ class Normalizer:
                 cache_path=self.NEURAL_NORM_CACHE_PATH['disease'],
                 no_cuda=no_cuda,
             )
-            print(f"neural_disease_normalizer is loaded.. model={self.NEURAL_NORM_MODEL_PATH['disease']} , dictionary={self.NEURAL_NORM_CACHE_PATH['disease']}")
+            print(
+                f"neural_disease_normalizer is loaded.. model={self.NEURAL_NORM_MODEL_PATH['disease']} , dictionary={self.NEURAL_NORM_CACHE_PATH['disease']}")
 
             self.neural_chemical_normalizer = NeuralNormalizer(
                 model_name_or_path=self.NEURAL_NORM_MODEL_PATH['drug'],
                 cache_path=self.NEURAL_NORM_CACHE_PATH['drug'],
                 no_cuda=no_cuda,
             )
-            print(f"neural_chemical_normalizer is loaded.. model={self.NEURAL_NORM_MODEL_PATH['drug']} , dictionary={self.NEURAL_NORM_CACHE_PATH['drug']}")
+            print(
+                f"neural_chemical_normalizer is loaded.. model={self.NEURAL_NORM_MODEL_PATH['drug']} , dictionary={self.NEURAL_NORM_CACHE_PATH['drug']}")
 
             self.neural_gene_normalizer = NeuralNormalizer(
                 model_name_or_path=self.NEURAL_NORM_MODEL_PATH['gene'],
                 cache_path=self.NEURAL_NORM_CACHE_PATH['gene'],
                 no_cuda=no_cuda,
             )
-            print(f"neural_gene_normalizer is loaded.. model={self.NEURAL_NORM_MODEL_PATH['gene']} , dictionary={self.NEURAL_NORM_CACHE_PATH['gene']}")
-
+            print(
+                f"neural_gene_normalizer is loaded.. model={self.NEURAL_NORM_MODEL_PATH['gene']} , dictionary={self.NEURAL_NORM_CACHE_PATH['gene']}")
 
     def normalize(self, base_name, doc_dict_list):
         start_time = time.time()
@@ -187,24 +195,25 @@ class Normalizer:
             if entity['id'] == self.NO_ENTITY_ID:
                 cuiless_entity_names.append(entity_name)
         cuiless_entity_names = list(set(cuiless_entity_names))
-        
+
         if len(cuiless_entity_names) == 0:
             return tagged_docs
         print(f"# cui-less in {ent_type}={len(cuiless_entity_names)}")
         if ent_type == 'disease':
             norm_entities = self.neural_disease_normalizer.normalize(
-                names=cuiless_entity_names, 
+                names=cuiless_entity_names,
             )
         elif ent_type == 'drug':
             norm_entities = self.neural_chemical_normalizer.normalize(
-                names=cuiless_entity_names, 
+                names=cuiless_entity_names,
             )
         elif ent_type == 'gene':
             norm_entities = self.neural_gene_normalizer.normalize(
-                names=cuiless_entity_names, 
+                names=cuiless_entity_names,
             )
-        
-        cuiless_entity2norm_entities = {c:n for c, n in zip(cuiless_entity_names,norm_entities)}
+
+        cuiless_entity2norm_entities = {
+            c: n for c, n in zip(cuiless_entity_names, norm_entities)}
         for entity, entity_name in zip(entities, entity_names):
             if entity_name in cuiless_entity2norm_entities:
                 cui = cuiless_entity2norm_entities[entity_name][0]
@@ -212,7 +221,7 @@ class Normalizer:
                 entity['is_neural_normalized'] = True
             else:
                 entity['is_neural_normalized'] = False
-        
+
         return tagged_docs
 
     def run_normalizers_wrap(self, ent_type, base_name, names, saved_items, results):
@@ -249,7 +258,7 @@ class Normalizer:
             s = socket.socket()
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             try:
-                s.connect((self.HOST, self.DISEASE_PORT))
+                s.connect((self.DISEASE_HOST, self.DISEASE_PORT))
                 s.send('{}'.format(base_thread_name).encode('utf-8'))
                 s.recv(bufsize)
             except ConnectionRefusedError as cre:
@@ -283,7 +292,7 @@ class Normalizer:
             names = [ptr[0] for ptr in name_ptr]
             preds = self.chemical_normalizer.normalize(names)
             for pred in preds:
-                oids.append(pred)            
+                oids.append(pred)
 
         elif ent_type == 'mutation':
             # pass because tmVar does mutation normalization
@@ -300,7 +309,7 @@ class Normalizer:
                     oids.append('NCBI:txid{}'.format(pred))
                 else:
                     oids.append(self.NO_ENTITY_ID)
-        
+
         elif ent_type == 'cell_line':
             names = [ptr[0] for ptr in name_ptr]
             preds = self.cellline_normalizer.normalize(names)
@@ -326,7 +335,7 @@ class Normalizer:
             s = socket.socket()
             s.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
             try:
-                s.connect((self.HOST, self.GENE_PORT))
+                s.connect((self.GENE_HOST, self.GENE_PORT))
             except ConnectionRefusedError as cre:
                 print('Check GNormPlus jar', cre)
                 s.close()
@@ -368,7 +377,7 @@ class Normalizer:
                 os.path.join(self.NORM_INPUT_DIR[ent_type]))
             gene_output_dir = os.path.abspath(
                 os.path.join(self.NORM_OUTPUT_DIR[ent_type]))
-            setup_dir = self.NORM_DICT_PATH[ent_type] # setup.txt
+            setup_dir = self.NORM_DICT_PATH[ent_type]  # setup.txt
 
             # start jar
             jar_args = '\t'.join(
@@ -387,7 +396,7 @@ class Normalizer:
                         open(norm_inp_path, 'r') as norm_in_f:
                     for line, input_l in zip(norm_out_f, norm_in_f):
                         gene_ids, gene_mentions = line[:-1].split('||'), \
-                                                  input_l[:-1].split('||')
+                            input_l[:-1].split('||')
                         for gene_id, gene_mention in zip(gene_ids,
                                                          gene_mentions):
                             eid = None
@@ -399,7 +408,7 @@ class Normalizer:
                                     gene_id = gene_id[:bar_idx]
                                 eid = gene_id
                                 eid = "EntrezGene:" + eid
-                            
+
                             oids.append(eid)
 
                 # 5. Remove output files

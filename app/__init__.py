@@ -41,6 +41,8 @@ def create_app(args):
             mtner_port=args.mtner_port,
             gene_norm_port=args.gene_norm_port,
             disease_norm_port=args.disease_norm_port,
+            gene_norm_host=args.gene_norm_host,
+            disease_norm_host=args.disease_norm_host,
             cache_port=args.cache_port,
             gnormplus_host=args.gnormplus_host,
             tmvar2_host=args.tmvar2_host,

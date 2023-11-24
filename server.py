@@ -51,6 +51,14 @@ def parse():
                         help='Sieve port',
                         default=18892,
                         type=int)
+    parser.add_argument("--gene_norm_host",
+                        help='GNormPlus host',
+                        default='127.0.0.1',
+                        type=str)
+    parser.add_argument('--disease_norm_host',
+                        help='Sieve host',
+                        default='127.0.0.1',
+                        type=str)
     parser.add_argument('--cache_port',
                         help='annotation cached db port',
                         default=27017,
